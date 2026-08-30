@@ -91,6 +91,7 @@ export default function HomePage() {
               onChange={(e) => setNewRoomName(e.target.value)}
               placeholder="New room name..."
               required
+              maxLength={255}
               className="flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
             />
             <button

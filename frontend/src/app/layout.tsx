@@ -20,6 +20,14 @@ export const metadata: Metadata = {
   description: "Real-time chat application",
 };
 
+const themeScript = `
+  (function() {
+    var t = localStorage.getItem('theme');
+    var d = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (d) document.documentElement.classList.add('dark');
+  })();
+`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -27,6 +35,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <ToastProvider>

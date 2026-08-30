@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -8,16 +9,18 @@ from routers import auth, rooms
 from ws_manager import websocket_handler
 from errors import validation_error_handler, http_error_handler, generic_error_handler
 
-app = FastAPI(title="Chat App API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Chat App API", version="1.0.0", lifespan=lifespan)
 
 app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(StarletteHTTPException, http_error_handler)
 app.add_exception_handler(Exception, generic_error_handler)
-
-
-@app.on_event("startup")
-def on_startup():
-    init_db()
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")]
 app.add_middleware(

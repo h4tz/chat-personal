@@ -222,11 +222,11 @@ export default function ChatRoomPage() {
               </p>
             </div>
           ) : (
-            messages.map((msg, i) => {
+            messages.map((msg) => {
               const isMe = msg.username === user?.username;
               return (
                 <div
-                  key={msg.id + "-" + i}
+                  key={msg.id}
                   className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
                 >
                   <div className="flex items-center gap-2 mb-1">

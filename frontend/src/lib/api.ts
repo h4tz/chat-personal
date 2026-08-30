@@ -26,7 +26,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
     throw new Error(error.error || error.detail || `HTTP ${res.status}`);
   }
 
-  if (res.status === 204) return undefined as T;
+  if (res.status === 204) return null as unknown as T;
   return res.json();
 }
 
