@@ -1,16 +1,16 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 
 
 class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 class UserResponse(BaseModel):
@@ -29,7 +29,7 @@ class Token(BaseModel):
 
 
 class RoomCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
 
 
 class RoomResponse(BaseModel):
@@ -50,3 +50,7 @@ class MessageResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MessageCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)

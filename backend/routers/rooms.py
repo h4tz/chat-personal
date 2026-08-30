@@ -1,10 +1,12 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from database import get_db
-from models import Room, User
-from schemas import RoomCreate, RoomResponse
+from models import Room, Message, User
+from schemas import RoomCreate, RoomResponse, MessageResponse
 from auth import get_current_user
+from websockets import get_online_users
 
 router = APIRouter()
 
@@ -67,3 +69,55 @@ def delete_room(
         )
     db.delete(room)
     db.commit()
+
+
+@router.get("/{slug}/messages", response_model=list[MessageResponse])
+def get_messages(
+    slug: str,
+    db: Session = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    room = db.query(Room).filter(Room.slug == slug).first()
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found",
+        )
+
+    messages = (
+        db.query(Message)
+        .filter(Message.room_id == room.id)
+        .order_by(Message.timestamp.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        MessageResponse(
+            id=msg.id,
+            content=msg.content,
+            timestamp=msg.timestamp,
+            username=msg.user.username,
+        )
+        for msg in reversed(messages)
+    ]
+
+
+class OnlineUsersResponse(BaseModel):
+    room_slug: str
+    online_users: list[str]
+    count: int
+
+
+@router.get("/{slug}/online", response_model=OnlineUsersResponse)
+def room_online_users(slug: str, db: Session = Depends(get_db)):
+    room = db.query(Room).filter(Room.slug == slug).first()
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found",
+        )
+    users = get_online_users(slug)
+    return OnlineUsersResponse(room_slug=slug, online_users=users, count=len(users))
