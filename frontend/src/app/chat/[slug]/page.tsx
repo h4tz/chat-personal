@@ -47,53 +47,80 @@ export default function ChatRoomPage() {
     scrollToBottom();
   }, [messages]);
 
-  // WebSocket connection
+  // WebSocket connection with auto-reconnect
   useEffect(() => {
     if (!slug || !token) return;
 
-    const wsUrl = getWsUrl(slug, token);
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    let ws: WebSocket;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let attempt = 0;
+    let unmounted = false;
 
-    ws.onopen = () => setConnected(true);
+    const connect = () => {
+      const wsUrl = getWsUrl(slug, token);
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      let data;
-      try {
-        data = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+      ws.onopen = () => {
+        setConnected(true);
+        attempt = 0;
+      };
 
-      if (!data || typeof data !== "object") return;
+      ws.onmessage = (event) => {
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch {
+          return;
+        }
 
-      switch (data.type) {
-        case "connected":
-          setOnlineUsers(data.online_users || []);
-          break;
-        case "chat_message":
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now(),
-              content: data.message,
-              username: data.username,
-              timestamp: data.timestamp || new Date().toISOString(),
-            },
-          ]);
-          break;
-        case "user_joined":
-        case "user_left":
-          setOnlineUsers(data.online_users || []);
-          break;
-      }
+        if (!data || typeof data !== "object") return;
+
+        switch (data.type) {
+          case "connected":
+            setOnlineUsers(data.online_users || []);
+            break;
+          case "chat_message":
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                content: data.message,
+                username: data.username,
+                timestamp: data.timestamp || new Date().toISOString(),
+              },
+            ]);
+            break;
+          case "user_joined":
+          case "user_left":
+            setOnlineUsers(data.online_users || []);
+            break;
+        }
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        if (!unmounted) {
+          const delay = Math.min(1000 * 2 ** attempt, 30000);
+          attempt++;
+          reconnectTimeout = setTimeout(connect, delay);
+        }
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
     };
 
-    ws.onclose = () => setConnected(false);
-    ws.onerror = () => setConnected(false);
+    connect();
 
     return () => {
-      ws.close();
+      unmounted = true;
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
       wsRef.current = null;
     };
   }, [slug, token]);

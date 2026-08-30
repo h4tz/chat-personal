@@ -1,6 +1,6 @@
 import re
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from database import get_db
 from models import Room, Message, User
@@ -31,6 +31,11 @@ def create_room(
     current_user: User = Depends(get_current_user),
 ):
     slug = slugify(room_data.name)
+    if not slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Room name must contain at least one letter or number",
+        )
     if db.query(Room).filter(Room.slug == slug).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -67,6 +72,7 @@ def delete_room(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Room not found",
         )
+    db.query(Message).filter(Message.room_id == room.id).delete()
     db.delete(room)
     db.commit()
 
@@ -87,6 +93,7 @@ def get_messages(
 
     messages = (
         db.query(Message)
+        .options(joinedload(Message.user))
         .filter(Message.room_id == room.id)
         .order_by(Message.timestamp.desc())
         .offset(offset)

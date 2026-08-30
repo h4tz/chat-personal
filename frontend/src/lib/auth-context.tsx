@@ -40,8 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await auth.login({ email, password });
     localStorage.setItem("token", res.access_token);
     setToken(res.access_token);
-    const me = await auth.me(res.access_token);
-    setUser(me);
+    try {
+      const me = await auth.me(res.access_token);
+      setUser(me);
+    } catch {
+      localStorage.removeItem("token");
+      setToken(null);
+      throw new Error("Failed to verify account");
+    }
   };
 
   const register = async (username: string, email: string, password: string) => {

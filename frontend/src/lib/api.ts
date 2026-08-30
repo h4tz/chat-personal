@@ -70,17 +70,17 @@ export const auth = {
 export const rooms = {
   list: () => apiFetch<Room[]>("/api/rooms/"),
 
-  get: (slug: string) => apiFetch<Room>(`/api/rooms/${slug}`),
+  get: (slug: string) => apiFetch<Room>(`/api/rooms/${encodeURIComponent(slug)}`),
 
   create: (name: string, token: string) =>
     apiFetch<Room>("/api/rooms/", { method: "POST", body: JSON.stringify({ name }), token }),
 
   messages: (slug: string, limit = 50, offset = 0) =>
-    apiFetch<Message[]>(`/api/rooms/${slug}/messages?limit=${limit}&offset=${offset}`),
+    apiFetch<Message[]>(`/api/rooms/${encodeURIComponent(slug)}/messages?limit=${limit}&offset=${offset}`),
 
   online: (slug: string) =>
     apiFetch<{ room_slug: string; online_users: string[]; count: number }>(
-      `/api/rooms/${slug}/online`
+      `/api/rooms/${encodeURIComponent(slug)}/online`
     ),
 };
 
