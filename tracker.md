@@ -4,45 +4,57 @@
 
 ```
 chat-app/
-├── backend/          # FastAPI + Python
-│   ├── main.py
-│   ├── models.py
-│   ├── schemas.py
-│   ├── database.py
-│   ├── auth.py
-│   ├── websockets.py
+├── backend/              # FastAPI + Python
+│   ├── main.py           # App entry, CORS, routes, WS endpoint
+│   ├── models.py         # SQLAlchemy: User, Room, Message
+│   ├── schemas.py        # Pydantic request/response models
+│   ├── database.py       # SQLAlchemy engine + session
+│   ├── auth.py           # JWT tokens + bcrypt hashing
+│   ├── ws_manager.py     # WebSocket handler + online users
+│   ├── errors.py         # Centralized error handlers
 │   ├── routers/
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   └── rooms.py
+│   │   ├── auth.py       # POST /register, /login, GET /me
+│   │   └── rooms.py      # CRUD + messages + online endpoints
 │   └── requirements.txt
-├── frontend/         # Next.js + React + TypeScript
+├── frontend/             # Next.js + React + TypeScript
 │   ├── src/
 │   │   ├── app/
+│   │   │   ├── layout.tsx           # Root layout (Theme+Auth+Toast providers)
+│   │   │   ├── page.tsx             # Room list + create room
+│   │   │   ├── globals.css          # Tailwind + animations
+│   │   │   ├── login/page.tsx       # Login form
+│   │   │   ├── register/page.tsx    # Register form
+│   │   │   └── chat/[slug]/page.tsx # Chat room (WS + history + online)
 │   │   ├── components/
+│   │   │   └── theme-toggle.tsx     # Dark/light mode toggle
 │   │   └── lib/
+│   │       ├── api.ts               # API client
+│   │       ├── auth-context.tsx      # JWT auth state
+│   │       ├── theme-context.tsx     # Dark mode state
+│   │       └── toast-context.tsx     # Toast notifications
 │   └── package.json
+├── .gitignore
 └── tracker.md
 ```
 
 ## Tech Stack
 
-| Layer    | Tech                                              |
-|----------|---------------------------------------------------|
+| Layer    | Tech                                                    |
+|----------|---------------------------------------------------------|
 | Backend  | FastAPI, SQLAlchemy, SQLite, Pydantic, bcrypt, python-jose |
-| Frontend | Next.js 14 (App Router), React, TypeScript, Tailwind CSS |
-| Real-time| FastAPI WebSockets (native)                      |
-| Auth     | JWT (access tokens)                               |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS |
+| Real-time| FastAPI WebSockets (native)                            |
+| Auth     | JWT (access tokens, 60min expiry)                       |
 
 ## Features
 
-- [ ] User Authentication (Register/Login with JWT)
-- [ ] Real-time Chat (WebSocket-based messaging)
-- [ ] Chat Rooms (Create and browse rooms)
-- [ ] Online Users (See who's in a room)
-- [ ] Message History (Load previous messages on join)
-- [ ] Modern UI (Dark mode, responsive, animations)
-- [ ] Error Handling (Validation, toasts, reconnection)
+- [x] User Authentication (Register/Login with JWT)
+- [x] Real-time Chat (WebSocket-based messaging)
+- [x] Chat Rooms (Create and browse rooms)
+- [x] Online Users (See who's in a room)
+- [x] Message History (Load previous messages on join)
+- [x] Modern UI (Dark mode, responsive, animations)
+- [x] Error Handling (Validation, toasts, reconnection)
 
 ## Progress
 
@@ -53,33 +65,12 @@ chat-app/
 - [x] Step 4: Auth system (JWT, register/login/me endpoints, bcrypt)
 - [x] Step 5: Room CRUD endpoints (list, create, get, delete)
 
-### Files Created/Edited (Batch 1)
-- tracker.md - project tracker
-- backend/requirements.txt - Python dependencies
-- backend/main.py - FastAPI app entry point
-- backend/database.py - SQLAlchemy engine + session
-- backend/models.py - User, Room, Message models
-- backend/schemas.py - Pydantic request/response schemas
-- backend/auth.py - JWT + password hashing utilities
-- backend/routers/auth.py - /api/auth endpoints
-- backend/routers/rooms.py - /api/rooms endpoints
-- .gitignore - ignore venv, cache, db, node_modules
-
 ### Batch 2 (Steps 6-10) ✅ DONE
 - [x] Step 6: Message history endpoint (GET /api/rooms/{slug}/messages, paginated)
 - [x] Step 7: WebSocket handler (connect, join, send, receive, broadcast)
 - [x] Step 8: Online users tracking (WebSocket events + REST endpoint)
 - [x] Step 9: Error handling & validation (Pydantic validators, error handlers)
 - [x] Step 10: Scaffold Next.js frontend (TypeScript, Tailwind, App Router)
-
-### Files Created/Edited (Batch 2)
-- backend/websockets.py - WebSocket handler + online users tracking
-- backend/main.py - added WebSocket route + error handlers
-- backend/routers/rooms.py - added message history + online users endpoints
-- backend/schemas.py - added field validation (min/max lengths)
-- backend/errors.py - centralized error handlers
-- frontend/ - Next.js project (create-next-app)
-- frontend/src/lib/api.ts - API client (auth, rooms, messages, WebSocket URL)
 
 ### Batch 3 (Steps 11-15) ✅ DONE
 - [x] Step 11: Auth pages (login/register with JWT context)
@@ -88,24 +79,61 @@ chat-app/
 - [x] Step 14: Message history UI (load 100 msgs on join)
 - [x] Step 15: Online users UI (sidebar with live presence)
 
-### Files Created/Edited (Batch 3)
-- frontend/src/lib/auth-context.tsx - AuthProvider + useAuth hook
-- frontend/src/app/layout.tsx - added AuthProvider wrapper
-- frontend/src/app/page.tsx - room list + create room form
-- frontend/src/app/login/page.tsx - login form
-- frontend/src/app/register/page.tsx - register form
-- frontend/src/app/chat/[slug]/page.tsx - full chat room (WS + history + online)
+### Batch 4 (Steps 16-20) ✅ DONE
+- [x] Step 16: Modern UI (dark mode toggle, fade/slide animations, scrollbar styling)
+- [x] Step 17: Error handling UI (toast notifications, success/error/info variants)
+- [x] Step 18: Integration testing (all 7 API endpoints verified)
+- [x] Step 19: Cleanup & optimization (renamed ws_manager, fixed JWT sub, pinned bcrypt)
+- [x] Step 20: Documentation & final review
 
-### Batch 4 (Steps 16-20)
-- [ ] Step 16: Modern UI (dark mode, animations)
-- [ ] Step 17: Error handling UI (toasts, validation)
-- [ ] Step 18: Integration testing
-- [ ] Step 19: Cleanup & optimization
-- [ ] Step 20: Documentation & final review
+## API Endpoints
 
-## Notes
+| Method | Endpoint                        | Auth | Description           |
+|--------|--------------------------------|------|-----------------------|
+| GET    | `/`                            | No   | API health check      |
+| POST   | `/api/auth/register`           | No   | Create account        |
+| POST   | `/api/auth/login`              | No   | Login, get JWT        |
+| GET    | `/api/auth/me`                 | Yes  | Current user info     |
+| GET    | `/api/rooms/`                  | No   | List all rooms        |
+| POST   | `/api/rooms/`                  | Yes  | Create a room         |
+| GET    | `/api/rooms/{slug}`            | No   | Get room details      |
+| DELETE | `/api/rooms/{slug}`            | Yes  | Delete a room         |
+| GET    | `/api/rooms/{slug}/messages`   | No   | Get message history   |
+| GET    | `/api/rooms/{slug}/online`     | No   | Get online users      |
+| WS     | `/ws/chat/{slug}?username=`    | No   | WebSocket chat        |
 
-- Backend runs on port 8000 (uvicorn)
-- Frontend runs on port 3000
-- WebSocket endpoint: ws://localhost:8000/ws/chat/{slug}/
-- Database: SQLite (chat.db)
+## How to Run
+
+### Backend
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Access
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+## WebSocket Protocol
+
+Connect: `ws://localhost:8000/ws/chat/{slug}?username={name}`
+
+Events received:
+- `{"type":"connected","message":"...","online_users":[...]}`
+- `{"type":"chat_message","username":"...","message":"...","timestamp":"..."}`
+- `{"type":"user_joined","username":"...","online_users":[...]}`
+- `{"type":"user_left","username":"...","online_users":[...]}`
+
+Events sent:
+- `{"message":"your message here"}`

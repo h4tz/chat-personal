@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from database import init_db
 from routers import auth, rooms
-from websockets import websocket_handler
+from ws_manager import websocket_handler
 from errors import validation_error_handler, http_error_handler, generic_error_handler
 
 app = FastAPI(title="Chat App API", version="1.0.0")

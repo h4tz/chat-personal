@@ -5,21 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { rooms, Room } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useToast } from "@/lib/toast-context";
 
 export default function HomePage() {
   const [roomList, setRoomList] = useState<Room[]>([]);
   const [newRoomName, setNewRoomName] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
   const { user, logout, token } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
     rooms
       .list()
       .then(setRoomList)
-      .catch(() => setError("Failed to load rooms"))
+      .catch(() => toast("Failed to load rooms", "error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -30,16 +32,21 @@ export default function HomePage() {
       return;
     }
     setCreating(true);
-    setError("");
     try {
       const room = await rooms.create(newRoomName, token);
       setRoomList((prev) => [room, ...prev]);
       setNewRoomName("");
+      toast(`Room "${room.name}" created`, "success");
     } catch (err: any) {
-      setError(err.message || "Failed to create room");
+      toast(err.message || "Failed to create room", "error");
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast("Logged out", "info");
   };
 
   return (
@@ -48,14 +55,14 @@ export default function HomePage() {
       <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Chat App</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {user ? (
               <>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {user.username}
                 </span>
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   Logout
@@ -69,6 +76,7 @@ export default function HomePage() {
                 Sign in
               </Link>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -95,12 +103,6 @@ export default function HomePage() {
           </form>
         )}
 
-        {error && (
-          <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-600 dark:text-red-400">
-            {error}
-          </div>
-        )}
-
         {/* Room List */}
         <div>
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
@@ -116,11 +118,12 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {roomList.map((room) => (
+              {roomList.map((room, i) => (
                 <Link
                   key={room.id}
                   href={`/chat/${room.slug}`}
-                  className="block rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:border-blue-500 hover:shadow-md transition-all"
+                  className="block rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:border-blue-500 hover:shadow-md transition-all animate-fade-in"
+                  style={{ animationDelay: `${i * 50}ms` }}
                 >
                   <div className="flex items-center justify-between">
                     <div>

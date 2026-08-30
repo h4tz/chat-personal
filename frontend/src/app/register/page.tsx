@@ -4,25 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/lib/toast-context";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       await register(username, email, password);
+      toast("Account created! Welcome!", "success");
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      toast(err.message || "Registration failed", "error");
     } finally {
       setLoading(false);
     }
@@ -41,12 +42,6 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
-          )}
-
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Username

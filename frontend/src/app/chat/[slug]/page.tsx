@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { rooms, getWsUrl, Message, Room } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function ChatRoomPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -135,8 +136,8 @@ export default function ChatRoomPage() {
           </h3>
           <ul className="space-y-2">
             {onlineUsers.map((u) => (
-              <li key={u} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
+              <li key={u} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 animate-fade-in">
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse-dot" />
                 {u}
                 {u === user?.username && (
                   <span className="text-xs text-gray-400">(you)</span>
@@ -175,6 +176,7 @@ export default function ChatRoomPage() {
               </div>
             </div>
           </div>
+          <ThemeToggle />
         </header>
 
         {/* Messages */}
@@ -205,7 +207,7 @@ export default function ChatRoomPage() {
                     </span>
                   </div>
                   <div
-                    className={`max-w-xs rounded-lg px-4 py-2.5 text-sm ${
+                    className={`msg-bubble max-w-xs rounded-lg px-4 py-2.5 text-sm animate-fade-in ${
                       isMe
                         ? "bg-blue-600 text-white rounded-br-none"
                         : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-none"

@@ -6,7 +6,7 @@ from database import get_db
 from models import Room, Message, User
 from schemas import RoomCreate, RoomResponse, MessageResponse
 from auth import get_current_user
-from websockets import get_online_users
+from ws_manager import get_online_users
 
 router = APIRouter()
 
