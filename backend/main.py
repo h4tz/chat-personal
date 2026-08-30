@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, WebSocket, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -18,12 +19,13 @@ app.add_exception_handler(Exception, generic_error_handler)
 def on_startup():
     init_db()
 
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
@@ -36,5 +38,5 @@ def root():
 
 
 @app.websocket("/ws/chat/{slug}")
-async def ws_chat(websocket: WebSocket, slug: str, username: str = Query(...)):
-    await websocket_handler(websocket, slug, username)
+async def ws_chat(websocket: WebSocket, slug: str, token: str = Query(...)):
+    await websocket_handler(websocket, slug, token)

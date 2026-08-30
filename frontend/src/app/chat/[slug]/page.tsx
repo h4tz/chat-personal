@@ -49,16 +49,23 @@ export default function ChatRoomPage() {
 
   // WebSocket connection
   useEffect(() => {
-    if (!slug || !user) return;
+    if (!slug || !token) return;
 
-    const wsUrl = getWsUrl(slug, user.username);
+    const wsUrl = getWsUrl(slug, token);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => setConnected(true);
 
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      if (!data || typeof data !== "object") return;
 
       switch (data.type) {
         case "connected":
@@ -89,7 +96,7 @@ export default function ChatRoomPage() {
       ws.close();
       wsRef.current = null;
     };
-  }, [slug, user]);
+  }, [slug, token]);
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();

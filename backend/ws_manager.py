@@ -1,17 +1,33 @@
 import json
+import logging
 from fastapi import WebSocket, WebSocketDisconnect
+from jose import JWTError, jwt
 from database import SessionLocal
 from models import Message, Room, User
+from auth import SECRET_KEY, ALGORITHM
+
+logger = logging.getLogger(__name__)
 
 rooms_connections: dict[str, list[dict]] = {}
 
 
-async def broadcast(room_slug: str, message: dict, exclude_sid: str = None):
+def _verify_token(token: str) -> int | None:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        if sub is None:
+            return None
+        return int(sub)
+    except (JWTError, ValueError):
+        return None
+
+
+async def broadcast(room_slug: str, message: dict, exclude_ws=None):
     if room_slug not in rooms_connections:
         return
     dead = []
     for conn in rooms_connections[room_slug]:
-        if conn["sid"] == exclude_sid:
+        if conn["websocket"] is exclude_ws:
             continue
         try:
             await conn["websocket"].send_json(message)
@@ -21,29 +37,36 @@ async def broadcast(room_slug: str, message: dict, exclude_sid: str = None):
         rooms_connections[room_slug].remove(d)
 
 
-async def websocket_handler(websocket: WebSocket, slug: str, username: str):
+async def websocket_handler(websocket: WebSocket, slug: str, token: str):
     await websocket.accept()
 
     db = SessionLocal()
+    username = None
     try:
+        user_id = _verify_token(token)
+        if user_id is None:
+            await websocket.send_json({"error": "Invalid or expired token"})
+            await websocket.close()
+            return
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            await websocket.send_json({"error": "User not found"})
+            await websocket.close()
+            return
+
+        username = user.username
+
         room = db.query(Room).filter(Room.slug == slug).first()
         if not room:
             await websocket.send_json({"error": "Room not found"})
             await websocket.close()
             return
 
-        user = db.query(User).filter(User.username == username).first()
-        if not user:
-            await websocket.send_json({"error": "User not found"})
-            await websocket.close()
-            return
-
         if slug not in rooms_connections:
             rooms_connections[slug] = []
 
-        sid = f"{websocket.client.host}:{websocket.client.port}"
         rooms_connections[slug].append({
-            "sid": sid,
             "websocket": websocket,
             "username": username,
         })
@@ -62,10 +85,22 @@ async def websocket_handler(websocket: WebSocket, slug: str, username: str):
 
         while True:
             data = await websocket.receive_text()
-            payload = json.loads(data)
-            content = payload.get("message", "").strip()
+            try:
+                payload = json.loads(data)
+            except json.JSONDecodeError:
+                await websocket.send_json({"error": "Invalid JSON"})
+                continue
 
+            if not isinstance(payload, dict):
+                await websocket.send_json({"error": "Invalid message format"})
+                continue
+
+            content = payload.get("message", "").strip()
             if not content:
+                continue
+
+            if len(content) > 5000:
+                await websocket.send_json({"error": "Message too long (max 5000 chars)"})
                 continue
 
             msg = Message(content=content, room_id=room.id, user_id=user.id)
@@ -82,8 +117,9 @@ async def websocket_handler(websocket: WebSocket, slug: str, username: str):
     except WebSocketDisconnect:
         pass
     except Exception as e:
+        logger.exception("WebSocket error")
         try:
-            await websocket.send_json({"error": str(e)})
+            await websocket.send_json({"error": "Internal server error"})
         except Exception:
             pass
     finally:
@@ -94,11 +130,12 @@ async def websocket_handler(websocket: WebSocket, slug: str, username: str):
             if not rooms_connections[slug]:
                 del rooms_connections[slug]
 
-        await broadcast(slug, {
-            "type": "user_left",
-            "username": username,
-            "online_users": get_online_users(slug),
-        })
+        if username:
+            await broadcast(slug, {
+                "type": "user_left",
+                "username": username,
+                "online_users": get_online_users(slug),
+            })
         db.close()
 
 

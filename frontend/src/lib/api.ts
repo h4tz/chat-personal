@@ -84,7 +84,7 @@ export const rooms = {
     ),
 };
 
-export function getWsUrl(slug: string, username: string): string {
+export function getWsUrl(slug: string, token: string): string {
   const wsBase = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
-  return `${wsBase}/ws/chat/${slug}?username=${encodeURIComponent(username)}`;
+  return `${wsBase}/ws/chat/${encodeURIComponent(slug)}?token=${encodeURIComponent(token)}`;
 }
