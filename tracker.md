@@ -81,12 +81,20 @@ chat-app/
 - frontend/ - Next.js project (create-next-app)
 - frontend/src/lib/api.ts - API client (auth, rooms, messages, WebSocket URL)
 
-### Batch 3 (Steps 11-15)
-- [ ] Step 11: Auth pages (login/register)
-- [ ] Step 12: Room list page
-- [ ] Step 13: Chat room page (WebSocket)
-- [ ] Step 14: Message history UI
-- [ ] Step 15: Online users UI
+### Batch 3 (Steps 11-15) ✅ DONE
+- [x] Step 11: Auth pages (login/register with JWT context)
+- [x] Step 12: Room list page (create/browse rooms)
+- [x] Step 13: Chat room page (WebSocket connect/send/receive)
+- [x] Step 14: Message history UI (load 100 msgs on join)
+- [x] Step 15: Online users UI (sidebar with live presence)
+
+### Files Created/Edited (Batch 3)
+- frontend/src/lib/auth-context.tsx - AuthProvider + useAuth hook
+- frontend/src/app/layout.tsx - added AuthProvider wrapper
+- frontend/src/app/page.tsx - room list + create room form
+- frontend/src/app/login/page.tsx - login form
+- frontend/src/app/register/page.tsx - register form
+- frontend/src/app/chat/[slug]/page.tsx - full chat room (WS + history + online)
 
 ### Batch 4 (Steps 16-20)
 - [ ] Step 16: Modern UI (dark mode, animations)
