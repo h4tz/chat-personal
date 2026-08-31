@@ -56,6 +56,7 @@ async def websocket_handler(websocket: WebSocket, slug: str, token: str):
             return
 
         username = user.username
+        avatar_url = user.avatar_url
 
         room = db.query(Room).filter(Room.slug == slug).first()
         if not room:
@@ -112,6 +113,7 @@ async def websocket_handler(websocket: WebSocket, slug: str, token: str):
                 "username": username,
                 "message": content,
                 "timestamp": msg.timestamp.isoformat(),
+                "avatar_url": avatar_url,
             })
 
     except WebSocketDisconnect:

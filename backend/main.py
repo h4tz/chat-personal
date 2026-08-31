@@ -2,6 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from database import init_db
@@ -9,10 +10,14 @@ from routers import auth, rooms
 from ws_manager import websocket_handler
 from errors import validation_error_handler, http_error_handler, generic_error_handler
 
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    os.makedirs(os.path.join(UPLOAD_DIR, "avatars"), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_DIR, "files"), exist_ok=True)
     yield
 
 
@@ -27,12 +32,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
+
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.get("/")

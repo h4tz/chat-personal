@@ -17,10 +17,17 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    avatar_url: str | None = None
+    bio: str | None = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class ProfileUpdate(BaseModel):
+    username: str | None = Field(None, min_length=3, max_length=50)
+    bio: str | None = Field(None, max_length=200)
 
 
 class Token(BaseModel):
@@ -45,8 +52,11 @@ class RoomResponse(BaseModel):
 class MessageResponse(BaseModel):
     id: int
     content: str
+    file_url: str | None = None
+    file_type: str | None = None
     timestamp: datetime
     username: str
+    avatar_url: str | None = None
 
     class Config:
         from_attributes = True
@@ -54,3 +64,9 @@ class MessageResponse(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
+
+
+class FileUploadResponse(BaseModel):
+    file_url: str
+    file_type: str
+    filename: str

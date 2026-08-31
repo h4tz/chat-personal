@@ -9,6 +9,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: { username?: string; bio?: string }) => Promise<void>;
+  updateAvatar: (file: File) => Promise<void>;
   loading: boolean;
 }
 
@@ -61,8 +63,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateProfile = async (data: { username?: string; bio?: string }) => {
+    if (!token) throw new Error("Not authenticated");
+    const updated = await auth.updateProfile(data, token);
+    setUser(updated);
+  };
+
+  const updateAvatar = async (file: File) => {
+    if (!token) throw new Error("Not authenticated");
+    const updated = await auth.uploadAvatar(file, token);
+    setUser(updated);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateProfile, updateAvatar, loading }}>
       {children}
     </AuthContext.Provider>
   );

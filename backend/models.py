@@ -11,6 +11,8 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    avatar_url = Column(String(500), nullable=True)
+    bio = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     messages = relationship("Message", back_populates="user")
@@ -32,6 +34,8 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
+    file_url = Column(String(500), nullable=True)
+    file_type = Column(String(20), nullable=True)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)

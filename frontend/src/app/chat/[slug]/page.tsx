@@ -3,14 +3,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { rooms, getWsUrl, Message, Room } from "@/lib/api";
+import { rooms, getWsUrl, getAvatarUrl, Message, Room } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useToast } from "@/lib/toast-context";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ChatRoomPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, token } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,15 +22,16 @@ export default function ChatRoomPage() {
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Load room info + message history
   useEffect(() => {
     if (!slug) return;
 
@@ -42,12 +47,10 @@ export default function ChatRoomPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  // Auto scroll on new messages
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // WebSocket connection with auto-reconnect
   useEffect(() => {
     if (!slug || !token) return;
 
@@ -86,8 +89,11 @@ export default function ChatRoomPage() {
               {
                 id: Date.now(),
                 content: data.message,
+                file_url: data.file_url || null,
+                file_type: data.file_type || null,
                 username: data.username,
                 timestamp: data.timestamp || new Date().toISOString(),
+                avatar_url: data.avatar_url || null,
               },
             ]);
             break;
@@ -134,7 +140,27 @@ export default function ChatRoomPage() {
     setInput("");
   };
 
-  // Redirect if not logged in
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !slug || !token) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast("File too large (max 10MB)", "error");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await rooms.uploadFile(slug, file, token);
+      toast("File shared", "success");
+    } catch (err: any) {
+      toast(err.message || "Failed to upload file", "error");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
@@ -172,7 +198,7 @@ export default function ChatRoomPage() {
             {onlineUsers.map((u) => (
               <li key={u} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 animate-fade-in">
                 <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse-dot" />
-                {u}
+                <span>{u}</span>
                 {u === user?.username && (
                   <span className="text-xs text-gray-400">(you)</span>
                 )}
@@ -247,7 +273,43 @@ export default function ChatRoomPage() {
                         : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-none"
                     }`}
                   >
-                    {msg.content}
+                    {msg.content && !msg.file_url && msg.content}
+
+                    {msg.file_type === "image" && msg.file_url && (
+                      <div className="mt-1">
+                        <a href={`${API_URL}${msg.file_url}`} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={`${API_URL}${msg.file_url}`}
+                            alt={msg.content}
+                            className="max-h-64 rounded-md object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            loading="lazy"
+                          />
+                        </a>
+                        {msg.content && msg.content !== "Shared a file" && (
+                          <p className="mt-1 text-xs opacity-75">{msg.content}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {msg.file_type === "file" && msg.file_url && (
+                      <div className="mt-1">
+                        <a
+                          href={`${API_URL}${msg.file_url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors ${
+                            isMe
+                              ? "bg-blue-500 hover:bg-blue-400"
+                              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                          }`}
+                        >
+                          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                          </svg>
+                          <span className="truncate max-w-[150px]">{msg.content}</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -263,16 +325,40 @@ export default function ChatRoomPage() {
         >
           <div className="flex gap-3">
             <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.pdf,.txt,.zip"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!connected || uploading}
+              className="shrink-0 rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Share file"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+              </svg>
+            </button>
+            <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={connected ? "Type a message..." : "Connecting..."}
-              disabled={!connected}
+              placeholder={
+                uploading
+                  ? "Uploading..."
+                  : connected
+                  ? "Type a message..."
+                  : "Connecting..."
+              }
+              disabled={!connected || uploading}
               className="flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50 transition-colors"
             />
             <button
               type="submit"
-              disabled={!connected || !input.trim()}
+              disabled={!connected || !input.trim() || uploading}
               className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Send

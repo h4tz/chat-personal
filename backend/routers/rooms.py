@@ -1,14 +1,24 @@
+import os
 import re
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from database import get_db
 from models import Room, Message, User
-from schemas import RoomCreate, RoomResponse, MessageResponse
+from schemas import RoomCreate, RoomResponse, MessageResponse, FileUploadResponse
 from auth import get_current_user
 from ws_manager import get_online_users
 
 router = APIRouter()
+
+FILE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "files")
+ALLOWED_FILE_TYPES = {
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf", "text/plain",
+    "application/zip", "application/x-zip-compressed",
+}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 def slugify(text: str) -> str:
@@ -105,8 +115,11 @@ def get_messages(
         MessageResponse(
             id=msg.id,
             content=msg.content,
+            file_url=msg.file_url,
+            file_type=msg.file_type,
             timestamp=msg.timestamp,
             username=msg.user.username,
+            avatar_url=msg.user.avatar_url,
         )
         for msg in reversed(messages)
     ]
@@ -128,3 +141,63 @@ def room_online_users(slug: str, db: Session = Depends(get_db)):
         )
     users = get_online_users(slug)
     return OnlineUsersResponse(room_slug=slug, online_users=users, count=len(users))
+
+
+@router.post("/{slug}/upload", response_model=FileUploadResponse)
+async def upload_file(
+    slug: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.slug == slug).first()
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found",
+        )
+
+    if file.content_type not in ALLOWED_FILE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File type not allowed",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large (max 10MB)",
+        )
+
+    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin"
+    filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = os.path.join(FILE_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    file_type = "image" if file.content_type.startswith("image/") else "file"
+    file_url = f"/uploads/files/{filename}"
+
+    msg = Message(
+        content=file.filename or "Shared a file",
+        file_url=file_url,
+        file_type=file_type,
+        room_id=room.id,
+        user_id=current_user.id,
+    )
+    db.add(msg)
+    db.commit()
+
+    from ws_manager import broadcast
+    await broadcast(slug, {
+        "type": "chat_message",
+        "username": current_user.username,
+        "message": msg.content,
+        "file_url": file_url,
+        "file_type": file_type,
+        "timestamp": msg.timestamp.isoformat(),
+    })
+
+    return FileUploadResponse(file_url=file_url, file_type=file_type, filename=file.filename or "file")
